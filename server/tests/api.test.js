@@ -119,8 +119,28 @@ await test('delete message using .delete()', async() => {
 })
 
 await test('add message using .push()', async() => {
-    const result = await db.msgs.push({text:'FUN!', date: new Date()});
+    const result = await db.msgs.push({text:'FUN!', date: new Date(), items:['a','b','c']});
     assert.equal(typeof result, 'string')
+})
+
+await test('find where string includes substring', async() => {
+    const msg = await db.msgs.find(msg => msg.text.includes('N') === true);
+    assert.equal(msg.text, 'FUN!')
+})
+
+await test('find where array includes element', async() => {
+    const msg = await db.msgs.find(msg => msg.items.includes('a') === true);
+    assert.equal(msg.text, 'FUN!')
+})
+
+await test('Should find where has existing fun property', async() => {
+    const msg = await db.msgs.find(msg => msg.hasOwnProperty('text') === true);
+    assert.equal(msg.text, 'FUN!')
+})
+
+await test('Should NOT find where doesnt have test property', async() => {
+    const msg = await db.msgs.find(msg => msg.hasOwnProperty('test') === true);
+    assert.equal(msg, null)
 })
 
 await test('find message using .find()', async() => {

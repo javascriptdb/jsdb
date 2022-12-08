@@ -162,7 +162,7 @@ export const opHandlers = {
 
         // WHERE
         operations.filter(op => op.type === 'filter').forEach(op => {
-            const parsedWhere = functionToWhere(op.data.callbackFn, op.data.thisArg);
+            const parsedWhere = functionToWhere(op.data.callbackFn, op.data.thisArg, collection);
             query += ` WHERE ${parsedWhere.query} `
             queryParams = {...queryParams, ...parsedWhere.whereQueryParams}
         });
@@ -194,7 +194,7 @@ export const opHandlers = {
     },
     find({collection, callbackFn, thisArg}) {
         forceTable(collection);
-        const parsedWhere = functionToWhere(callbackFn, thisArg);
+        const parsedWhere = functionToWhere(callbackFn, thisArg, collection);
         const query = `SELECT * FROM ${collection} WHERE ${parsedWhere.query} LIMIT 1`;
         const result = dbCommand('all', query, parsedWhere.whereQueryParams);
         return result.data[0] && rowDataToObject(result.data[0]);
@@ -205,7 +205,7 @@ export const opHandlers = {
             const result = this.getAll({collection});
             return memoizedRun({array: result, ...thisArg}, `array.map(${callbackFn})`);
         } else {
-            const {select, singleValue} = functionToSelect(callbackFn, thisArg);
+            const {select, singleValue} = functionToSelect(callbackFn, thisArg, collection);
             const query = `SELECT ${select} FROM ${collection}`;
             const result = dbCommand('all', query);
             if(singleValue) {
