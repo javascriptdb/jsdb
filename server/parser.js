@@ -87,8 +87,8 @@ export const functionToWhere = _.memoize(function functionToWhere(functionString
             }
             this.skip()
           }
-          if (node.callee.property.name === 'hasOwnProperty') {
-            let path = nodeString.substring(0, nodeString.indexOf('.hasOwnProperty')).replace(param,'');
+          if (node.callee.property.name === 'hasOwnProperty' || node.callee.property.name === 'hasOwn') {
+            let path = nodeString.substring(0, nodeString.indexOf('.hasOwn')).replace(param,'');
             path += '.' + node.arguments[0].value;
             string += `json_extract(${collection}.value,'$${safe(path)}') IS NOT NULL`;
 
