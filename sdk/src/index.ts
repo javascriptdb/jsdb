@@ -27,7 +27,12 @@ export function initApp(config: { serverUrl?: string, apiKey?: string, connector
             body: JSON.stringify(await traverse(data, outgoingReplacer))
         });
         if(response.headers.get('Content-Length') === '2') {
-            return {}
+            const content = await response.text();
+            if(content.toLowerCase() === 'ok') {
+                return true;
+            } else {
+                return JSON.parse(content)
+            }
         }
         return await traverse(await response.json(), incomingReplacer);
     }
@@ -516,127 +521,137 @@ export function initApp(config: { serverUrl?: string, apiKey?: string, connector
         }
     }
 
-    const DatabaseCollection = class DatabaseCollection {
-        collection: string;
+    function databaseCollectionFactory(collection: string) {
+        let resolve: fn;
+        let reject: fn;
 
-        async* [Symbol.asyncIterator]() {
-            const result = await connectors[config.connector].getAll({collection: this.collection})
-            yield* result;
-        }
+        const proxyPromise = new Promise((_resolve, _reject) => {
+            resolve = _resolve;
+            reject = _reject;
+        });
 
-        // @ts-ignore
-        get size(): Promise<number> {
-            return connectors[config.connector].size({collection: this.collection});
-        }
+        const symbols = {
+            async* [Symbol.asyncIterator]() {
+                const result = await connectors[config.connector].getAll({collection})
+                yield* result;
+            },
 
-        async map(callbackFn: fn, thisArg = {}): Promise<Array<any>> {
-            return connectors[config.connector].map({
-                collection: this.collection,
-                callbackFn: callbackFn.toString(),
-                thisArg
-            })
-        }
-
-        filter(callbackFn: fn, thisArg = {}) {
-            const data = {
-                callbackFn: callbackFn
-                    .toString(),
-                thisArg
-            }
-            return new ChainableFilter(this.collection, [{type: 'filter', data}]);
-        }
-
-        async slice(start = 0, end?: number): Promise<Array<document>> {
-            return connectors[config.connector].slice({
-                collection: this.collection,
-                start,
-                end
-            });
-        }
-
-        async find(callbackFn: fn, thisArg = {}): Promise<document> {
-            return connectors[config.connector].find({
-                collection: this.collection,
-                callbackFn: callbackFn
-                    .toString(),
-                thisArg
-            });
-        }
-
-        async forEach(callback: fn): Promise<unknown> {
-            return connectors[config.connector].forEach({collection: this.collection}, callback);
-        }
-
-        async push(value: any): Promise<string> {
-            return connectors[config.connector].push({collection: this.collection, value});
-        }
-
-        async clear(): Promise<boolean> {
-            return connectors[config.connector].clear({collection: this.collection});
-        }
-
-        async set(key: string, value: any): Promise<DatabaseCollection> {
-            await connectors[config.connector].set({collection: this.collection, id: key, value})
-            return this;
-        }
-
-        async get(key: string): Promise<document> {
-            return connectors[config.connector].get({collection: this.collection, id: key})
-        }
-
-        async entries() {
-            const resultMap = new Map();
-            await connectors[config.connector].forEach({collection: this.collection}, (element: document) => {
-                resultMap.set(element.id, element);
-            })
-            return resultMap.entries();
-        }
-
-        async values() {
-            const resultMap = new Map();
-            await connectors[config.connector].forEach({collection: this.collection}, (element: document) => {
-                resultMap.set(element.id, element);
-            })
-            return resultMap.values();
-        }
-
-        async has(id: string): Promise<boolean> {
-            return connectors[config.connector].has({collection: this.collection, id});
-        }
-
-        async delete(id: string): Promise<boolean> {
-            return connectors[config.connector].delete({collection: this.collection, id});
-        }
-
-        async keys(): Promise<Array<string>> {
-            return connectors[config.connector].keys({collection: this.collection})
-        }
-
-        // @ts-ignore
-        get size() {
-            return connectors[config.connector].size({collection: this.collection})
-        }
-
-        proxy = new Proxy(this, {
             // @ts-ignore
-            set: function (target, property, value) {
-                return connectors[config.connector].set({collection: target.collection, id: property, value})
+            get size(): Promise<number> {
+                return connectors[config.connector].size({collection});
+            },
+
+            async map(callbackFn: fn, thisArg = {}): Promise<Array<any>> {
+                return connectors[config.connector].map({
+                    collection,
+                    callbackFn: callbackFn.toString(),
+                    thisArg
+                })
+            },
+
+            filter(callbackFn: fn, thisArg = {}) {
+                const data = {
+                    callbackFn: callbackFn
+                      .toString(),
+                    thisArg
+                }
+                return new ChainableFilter(collection, [{type: 'filter', data}]);
+            },
+
+            async slice(start = 0, end?: number): Promise<Array<document>> {
+                return connectors[config.connector].slice({
+                    collection,
+                    start,
+                    end
+                });
+            },
+
+            async find(callbackFn: fn, thisArg = {}): Promise<document> {
+                return connectors[config.connector].find({
+                    collection,
+                    callbackFn: callbackFn
+                      .toString(),
+                    thisArg
+                });
+            },
+
+            async forEach(callback: fn): Promise<unknown> {
+                return connectors[config.connector].forEach({collection}, callback);
+            },
+
+            async push(value: any): Promise<string> {
+                return connectors[config.connector].push({collection, value});
+            },
+
+            async clear(): Promise<boolean> {
+                return connectors[config.connector].clear({collection});
+            },
+
+            async set(key: string, value: any): Promise<any> { // TODO : fix type
+                await connectors[config.connector].set({collection, id: key, value})
+                return this;
+            },
+
+            async get(key: string): Promise<document> {
+                return connectors[config.connector].get({collection, id: key})
+            },
+
+            async entries() {
+                const resultMap = new Map();
+                await connectors[config.connector].forEach({collection}, (element: document) => {
+                    resultMap.set(element.id, element);
+                })
+                return resultMap.entries();
+            },
+
+            async values() {
+                const resultMap = new Map();
+                await connectors[config.connector].forEach({collection}, (element: document) => {
+                    resultMap.set(element.id, element);
+                })
+                return resultMap.values();
+            },
+
+            async has(id: string): Promise<boolean> {
+                return connectors[config.connector].has({collection, id});
+            },
+
+            async delete(id: string): Promise<boolean> {
+                return connectors[config.connector].delete({collection, id});
+            },
+
+            async keys(): Promise<Array<string>> {
+                return connectors[config.connector].keys({collection})
+            },
+
+            // @ts-ignore
+            get size() {
+                return connectors[config.connector].size({collection})
+            }
+        }
+
+        return new Proxy(proxyPromise, {
+            // @ts-ignore
+            set(_target, property, value) {
+                return connectors[config.connector].set({collection, id: property, value})
             },
             get(target, property, receiver) {
                 if (property === 'length') property = 'size';
-                return Reflect.get(target, property, receiver) || nestedProxyFactory([target.collection, property.toString()]);
+                if (property === 'then') {
+                    connectors[config.connector].getAll({collection}).then(result => {
+                        resolve(result);
+                    }).catch(reject);
+                    return target[property].bind(proxyPromise);
+                };
+                return Reflect.get(symbols, property, receiver) || nestedProxyFactory([collection, property.toString()]);
             },
             // @ts-ignore
             deleteProperty(target, property) {
-                return connectors[config.connector].delete({collection: target.collection, id: property})
+                return connectors[config.connector].delete({collection, id: property})
             }
-        });
-
-        constructor(collection: string) {
-            this.collection = collection;
-            return this.proxy;
-        }
+        })
     }
+
 
     const db = new Proxy({
         async getTables(){
@@ -647,7 +662,7 @@ export function initApp(config: { serverUrl?: string, apiKey?: string, connector
             if(_target[property]) {
                 return _target[property];
             }
-            return new DatabaseCollection(property.toString())
+            return databaseCollectionFactory(property.toString())
         }
     })
 

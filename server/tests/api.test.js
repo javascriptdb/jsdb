@@ -93,6 +93,12 @@ await test('get size using .length', async() => {
     assert.equal(size, 1)
 })
 
+await test('get all msgs', async() => {
+    const msgs = await db.msgs;
+    const size = msgs.length;
+    assert.equal(size, 1)
+})
+
 await test('get message using dot notation', async() => {
     const msg = await db.msgs.x;
     assert.equal(msg.text, 'xyz')

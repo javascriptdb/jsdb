@@ -90,7 +90,7 @@ app.post(['/getAll', '/forEach', '/entries', '/values'], async (req, res, next) 
 app.post(['/slice'], async (req, res, next) => {
     try {
         const array = opHandlers.slice(req.body);
-        res.send(array);
+        res.send(array || []);
         next();
     } catch (e) {
         console.error(e);
