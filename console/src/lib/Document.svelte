@@ -1,5 +1,5 @@
 <script>
-    import {db} from "../../services/jsdb";
+    import {db} from "../services/jsdb";
 
     export let id;
     export let collection;
@@ -12,4 +12,4 @@
     }
 </script>
 
-<slot {document}/>
+{#if document}<slot {document}/>{/if}

@@ -159,6 +159,8 @@ await test('find message using .find() and thisArg', async() => {
     assert.equal(msg.text, 'FUN!')
 })
 
+// TODO : Add filter / find using greater than comparison using numbers
+
 await test('filter message using .filter() and thisArg', async() => {
     const msgs = await db.msgs.filter(msg => msg.text === this.text, {text:'FUN!'});
     assert.equal(msgs.length, 1)

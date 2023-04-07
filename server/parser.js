@@ -6,12 +6,14 @@ import {safe} from "./opHandlersBetterSqlite.js";
 
 const operatorMaps = {
   '===': '==',
+  '==': '==',
   '&&': 'AND',
   '||': 'OR',
   '!=':'!=',
   '<': '<',
   '<=': '<=',
-  '>=':'>='
+  '>=':'>=',
+  '>':'>',
 }
 
 function getOperator(_operator) {
