@@ -176,7 +176,6 @@ export const opHandlers = {
             queryParams.offset = sliceOp?.data.start;
             queryParams.limit = sliceOp?.data.end - sliceOp?.data.start;
         }
-        console.log(query, queryParams);
         if (lengthOp) {
             // Return without running map operation, doesn't make sense to waste time mapping and then counting.
             const result = dbCommand('get', query, queryParams)

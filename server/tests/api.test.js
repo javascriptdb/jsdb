@@ -3,7 +3,7 @@ import {initApp} from "@jsdb/sdk";
 import * as assert from "assert";
 import {opHandlers} from "../opHandlersBetterSqlite.js";
 start();
-const {db, auth, functions} = initApp({serverUrl: 'http://localhost:3001', connector: 'HTTP'})
+const {db, auth, functions} = await initApp({serverUrl: 'http://localhost:3001', connector: 'HTTP'})
 
 const passedMap = new Map();
 const failedMap = new Map();
@@ -340,7 +340,7 @@ await test('call function & remotely insert 10k records', async() => {
 
 // LOCAL TESTS
 
-const localJsdb = initApp({connector: 'LOCAL', opHandlers: opHandlers});
+const localJsdb = await initApp({connector: 'LOCAL', opHandlers: opHandlers});
 await test('clear logs', async() => {
     await localJsdb.db.logs.clear();
     const size = await localJsdb.db.logs.size;
@@ -366,9 +366,10 @@ await test('clear logs', async() => {
 
 // // WS TESTS
 
-const wsJsdb = initApp({connector: 'WS', opHandlers: opHandlers, serverUrl: 'http://localhost:3001'})
+const wsJsdb = await initApp({connector: 'WS', opHandlers: opHandlers, serverUrl: 'http://localhost:3001'})
 
 await test('clear logs', async() => {
+    debugger;
     await wsJsdb.db.logs.clear();
     const size = await wsJsdb.db.logs.size;
     assert.deepStrictEqual(size, 0)
