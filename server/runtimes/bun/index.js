@@ -1,13 +1,25 @@
+import {route} from '../../http/base.js';
+import {readStreamToPromise} from '../../utils.js';
+
 const port = process.env.PORT || 3001;
 const hostname = '0.0.0.0';
 
 const server = Bun.serve({
   port,
   hostname,
-  fetch(req) {
+  async fetch(req) {
     if(req.method === 'POST') {
-      const body = [];
-      // req.body.
+      const bodyString = await readStreamToPromise(req.body);
+      const result = await route(req.url, bodyString);
+      if (result.error) {
+        res.statusCode = result.statusCode || 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(result.error));
+      } else {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(result));
+      }
     }
     return new Response("Welcome to Bun!");
   },

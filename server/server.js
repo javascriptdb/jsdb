@@ -1,15 +1,8 @@
-import express from "express";
-import cors from "cors";
-import url from 'url';
-import fs from 'fs';
-import path from "path";
-import rateLimit from 'express-rate-limit'
-import passport from "passport";
+
+
 import { WebSocketServer } from 'ws';
 import 'dotenv/config'
-import authApp from './authApp.js';
-import dbApp from "./dbApp.js";
-import functionsApp from "./functionsApp.js";
+
 import EventEmitter from 'events';
 import _ from 'lodash-es';
 import {
@@ -135,34 +128,7 @@ wsServer.on('connection', socket => {
   });
 });
 
-export const app = express();
 
-const entryPointUrl = url.pathToFileURL(process.argv[1]).href;
-const runningAsLibrary = import.meta.url !== entryPointUrl;
 
-if(runningAsLibrary) {
-  const customPath = path.resolve(url.fileURLToPath(entryPointUrl), '../.jsdb');
-  await importFromPath(customPath);
-}
-
-try {
-  const bundles = opHandlers.getAll({collection: 'bundles'});
-  const currentDbBundle = bundles[0];
-  if(currentDbBundle) {
-    await importFromBase64(currentDbBundle.file.string);
-  }
-} catch (e) {
-  console.error(e);
-}
-
-if(process.env.RATE_LIMIT) {
-  // Apply the rate limiting middleware to all requests
-  app.use(rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: process.env.RATE_LIMIT,
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  }))
-}
 
 

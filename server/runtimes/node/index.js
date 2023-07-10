@@ -1,29 +1,26 @@
 import * as http from 'http';
-import { WebSocketServer } from 'ws';
+import {WebSocketServer} from 'ws';
 import {route} from '../../http/base.js';
-const wsServer = new WebSocketServer({ noServer: true });
+import {readStreamToPromise} from '../../utils.js';
+
+const wsServer = new WebSocketServer({noServer: true});
 
 const hostname = '0.0.0.0';
 const port = process.env.PORT || 3001;
 
 const server = http.createServer(async (req, res) => {
-  if(req.method === 'POST') {
-    const body = [];
-    req.on('data', (chunk) => {
-      body.push(chunk);
-    }).on('end', async () => {
-      const bodyString = Buffer.concat(body).toString();
-      const result = await route(req.url, bodyString);
-      if(result.error) {
-        res.statusCode = result.statusCode || 500;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(result.error));
-      } else {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(result));
-      }
-    });
+  if (req.method === 'POST') {
+    const bodyString = await readStreamToPromise(req);
+    const result = await route(req.url, bodyString);
+    if (result.error) {
+      res.statusCode = result.statusCode || 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(result.error));
+    } else {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(result));
+    }
   }
 });
 

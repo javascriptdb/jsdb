@@ -4,13 +4,13 @@ import {realtimeListeners} from '../ws/ws.js';
 
 // TODO : User context
 
-async function runSecurityRules(operation, body) {
+async function runSecurityRules(operation, body, before) {
   const ruleFunction = resolveMiddlewareFunction('rules', body.collection, operation);
   if (!ruleFunction) {
     console.warn(`No rule defined for ${body.collection} operation ${operation}`);
   } else {
     try {
-      const ruleResult = await ruleFunction({...body, user: {}});
+      const ruleResult = await ruleFunction({...body, user: {}, before});
       if (!ruleResult) {
         return {error: new Error('Unauthorized!'), statusCode: 401};
       }
@@ -19,6 +19,8 @@ async function runSecurityRules(operation, body) {
     }
   }
 }
+
+const operationsWithSideEffects = ['push', 'set', 'delete', 'clear'];
 
 const operations = {
   'getTables': (body) => {
@@ -55,36 +57,22 @@ const operations = {
   },
   'push': (body) => {
     const result = opHandlers.set(body);
-    const documentData = opHandlers.get({collection:body.collection,id: result.insertedId});
-    realtimeListeners.emit(body.collection, {event: 'add', document: documentData})
     return {value: result.insertedId};
   },
   'size' : (body) => {
     const count = opHandlers.size(body);
     return {value: count};
   },
-
   'clear': (body) => {
     opHandlers.clear(body);
-    // TODO : AI generated this line
-    // realtimeListeners.emit(body.collection, {event: 'clear', document: null})
     return true;
   },
   'delete': (body) => {
     const wasDeleted = opHandlers.delete(body);
-    // TODO : AI generated this line
-    // realtimeListeners.emit(body.collection, {event: 'delete', document: body.id})
     return {value: wasDeleted};
   },
   'set': (body) => {
     const result = opHandlers.set(body);
-    const documentData = opHandlers.get(body);
-    if (result.inserted) { // It was new
-      realtimeListeners.emit(body.collection, {event: 'add', document: documentData})
-    } else { //Modified existing one
-      realtimeListeners.emit(body.collection, {event: 'edit', document: documentData})
-    }
-    realtimeListeners.emit(`${body.collection}.${body.id}`, {document: documentData})
     return true;
   },
   'get' : (body) => {
@@ -98,22 +86,35 @@ operations.values = operations.getAll;
 operations.length = operations.size;
 
 export async function routeDb(operation, body) {
-  await runSecurityRules(operation, body);
+  let before, after = undefined;
+  if(body.id) {
+    // TODO : only get the document if there is a security rule or trigger that actually uses it, we could use acorn
+    before = opHandlers.get(body);
+  }
+
+  await runSecurityRules(operation, body, before);
   try {
     const result = operations[operation](body);
+    if(operationsWithSideEffects.includes(operation)) {
+      if (body.id) {
+        after = opHandlers.get(body);
+        realtimeListeners.emit(`${body.collection}.${body.id}`, {event: 'edit', document: afterDocumentData})
+      }
+      realtimeListeners.emit(body.collection, {operation})
+    }
     setTimeout(() => {
       executeTrigger(operation, body, result)
     })
     return result;
-  } catch (e) {
-    return {error: e.message};
+  } catch (error) {
+    return {error};
   }
 }
 
-function executeTrigger(operation, body, result) {
+function executeTrigger(operation, body, result, before, after) {
   const triggerFunction = resolveMiddlewareFunction('triggers', body.collection, operation)
   try {
-    triggerFunction?.({...body, user: {}, result});
+    triggerFunction?.({...body, user: {}, result, before, after});
   } catch (e) {
     console.error(e);
   }

@@ -1,7 +1,6 @@
 import path from "path";
 import url from "url";
 import fsPromises from "fs/promises";
-import AdmZip from "adm-zip";
 import operationFallback from "./operationFallback.js";
 import {forceIndex} from "./opHandlersBetterSqlite.js";
 
@@ -71,17 +70,6 @@ export async function importFromPath(extractedBundlePath) {
     }
 }
 
-export async function importFromBase64(base64) {
-    // TODO : do this without writing a temporal zip file to FS
-    const tmpBundlePath = path.resolve(process.cwd(), '.tmpJsdbBundle.zip');
-    await fsPromises.writeFile(tmpBundlePath, Buffer.from(base64, 'base64'));
-    const zip = new AdmZip(tmpBundlePath);
-    const tempJsdbPath = path.resolve(process.cwd(), '.jsdb-temp');
-    zip.extractAllTo(tempJsdbPath, true);
-    await importFromPath(tempJsdbPath);
-    fsPromises.rm(tmpBundlePath)
-    fsPromises.rm(tempJsdbPath, {recursive: true, force: true});
-}
 
 const defaultsPath = path.resolve(url.fileURLToPath(import.meta.url), '../.jsdb');
 
