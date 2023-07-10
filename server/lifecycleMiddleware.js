@@ -10,13 +10,13 @@ export const rules = {};
 export const functions = {};
 export const indexes = {};
 
-export function resolveMiddlewareFunction(middlewareType, collection, method) {
+export function resolveMiddlewareFunction(middlewareType, collection, operation) {
   let object = middlewareType === 'rules' ? rules : triggers;
-  const resolvedFunction = object[collection]?.[method]
-      || rules[collection]?.[operationFallback[method]]
+  const resolvedFunction = object[collection]?.[operation]
+      || rules[collection]?.[operationFallback[operation]]
       || rules[collection]?.default
-      || rules.default?.[method]
-      || rules.default?.[operationFallback[method]]
+      || rules.default?.[operation]
+      || rules.default?.[operationFallback[operation]]
       || rules.default?.default;
   return resolvedFunction;
 }

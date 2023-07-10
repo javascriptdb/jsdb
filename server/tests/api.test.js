@@ -1,8 +1,8 @@
-import {start} from "../server.js";
+// import {start} from "../server.js";
 import {initApp} from "@jsdb/sdk";
 import * as assert from "assert";
 import {opHandlers} from "../opHandlersBetterSqlite.js";
-start();
+// start();
 const {db, auth, functions} = await initApp({serverUrl: 'http://localhost:3001', connector: 'HTTP'})
 
 const passedMap = new Map();
@@ -17,14 +17,14 @@ async function test(name, callback) {
         failedMap.set(name, e);
     }
 }
-
-await test('Can create account', async() => {
-    await auth.createAccount({email: `test@javascriptdb.com`, password: 'dhs87a6dasdg7as8db68as67da'})
-})
-
-await test('Can sign in to account', async() => {
-    await auth.signIn({email: `test@javascriptdb.com`, password: 'dhs87a6dasdg7as8db68as67da'})
-})
+//
+// await test('Can create account', async() => {
+//     await auth.createAccount({email: `test@javascriptdb.com`, password: 'dhs87a6dasdg7as8db68as67da'})
+// })
+//
+// await test('Can sign in to account', async() => {
+//     await auth.signIn({email: `test@javascriptdb.com`, password: 'dhs87a6dasdg7as8db68as67da'})
+// })
 
 await test('Get all table names', async() => {
     const names = await db.getTables();

@@ -203,7 +203,7 @@ app.use(async (req, res, next) => {
     next();
     const {collection, id, value} = req.body;
     const method = req.path.replaceAll('/', '');
-    const triggerFunction = resolveMiddlewareFunction('triggers', collection, method)
+    const triggerFunction = resolveMiddlewareFunction('triggers', collection, operation)
     try {
         triggerFunction?.({collection, id, value, user: req.user, insertedId: req.insertedId, req, res});
     } catch (e) {
