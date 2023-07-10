@@ -1,7 +1,4 @@
-if(typeof WebSocket === 'undefined') {
-    // @ts-ignore
-    global.WebSocket = (await import('ws')).default;
-}
+
 
 type document = { id: string, [key: string]: any }
 type fn = (v: any) => any
@@ -43,6 +40,11 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
         try {
             if (ws) {
                 ws.close();
+            }
+
+            if(typeof WebSocket === 'undefined') {
+                // @ts-ignore
+                global.WebSocket = (await import('ws')).default;
             }
 
             ws = new WebSocket(baseUrl?.replace('http://', 'ws://').replace('https://', 'wss://'));
