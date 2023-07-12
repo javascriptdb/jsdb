@@ -3,6 +3,7 @@ import {WebSocketServer} from 'ws';
 import {route} from '../../http/base.js';
 import {parseData, readStreamToPromise} from '../../utils.js';
 import jwt from 'jsonwebtoken';
+import {getEventStore} from '../../ws/ws.js';
 
 const wsServer = new WebSocketServer({noServer: true});
 
@@ -12,7 +13,8 @@ const port = process.env.PORT || 3001;
 const server = http.createServer(async (req, res) => {
   if (req.method === 'POST') {
     const bodyString = await readStreamToPromise(req);
-    const result = await route(req.url, bodyString);
+    const body = parseData(bodyString);
+    const result = await route(req.url, body);
     if (result?.error) {
       res.statusCode = result.statusCode || 500;
       res.setHeader('Content-Type', 'application/json');
@@ -47,11 +49,25 @@ wsServer.on('connection', socket => {
     }
 
     if(parsedMessage.subscription === true) {
-      // const result = await route(`/db/${}`, bodyString);
+      const unsubscribe = getEventStore(parsedMessage).subscribe(result => {
+        socket.send(JSON.stringify({
+          value: result.value,
+          eventName: parsedMessage.eventName,
+          url: parsedMessage.url,
+          collection: parsedMessage.collection,
+        }))
+      })
+      // TODO : un subscribe from all stores if socket closes
     } else {
-      const result = await route(parsedMessage.url, undefined, parsedMessage);
+      // TODO : remove the parsedBody parameter, parse the body here too
+      const result = await route(parsedMessage.url, parsedMessage);
+      // TODO : what happens if the result contains a property called error? Should we let the internals crash and have a try catch here?
       if(result?.error) {
-
+        socket.send(JSON.stringify({
+          error: result.error,
+          eventName: parsedMessage.eventName,
+          url: parsedMessage.url,
+        }))
       } else {
         socket.send(JSON.stringify({
           value: result,
@@ -61,9 +77,5 @@ wsServer.on('connection', socket => {
         }))
       }
     }
-
-
-    // const result = await route(parsedMessage.url, parsedMessage.body);
-    // socket.send(JSON.stringify(result));
   });
 });

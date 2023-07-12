@@ -1,6 +1,6 @@
 import {resolveMiddlewareFunction, rules, triggers} from '../lifecycleMiddleware.js';
 import {opHandlers} from "../opHandlersBetterSqlite.js";
-import {realtimeListeners} from '../ws/ws.js';
+import {emitChange, realtimeListeners} from '../ws/ws.js';
 
 // TODO : User context
 
@@ -35,9 +35,9 @@ export async function routeDb(operation, body) {
     if(operationsWithSideEffects.includes(operation)) {
       if (body.id) {
         after = opHandlers.get(body);
-        realtimeListeners.emit(`${body.collection}.${body.id}`, {event: 'edit', document: after})
+        emitChange(body.collection, body.id, after);
       }
-      realtimeListeners.emit(body.collection, {operation})
+      emitChange(body.collection, undefined)
     }
     setTimeout(() => {
       executeTrigger(operation, body, result)

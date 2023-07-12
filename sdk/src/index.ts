@@ -407,7 +407,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                         collection: path[0],
                         id: path[1],
                         path: path.slice(2)
-                    }, 'get', true);
+                    }, '/db/get', true);
                 } else {
                     return nestedProxyFactory([...path, property.toString()]);
                 }
@@ -518,7 +518,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             return subscriptionFactory(eventName, {
                 collection: this.collection,
                 operations: this.operations
-            }, 'filter', true);
+            }, '/db/filter', true);
         }
     }
 
