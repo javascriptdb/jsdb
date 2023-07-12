@@ -66,10 +66,10 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                 try {
                     const data = JSON.parse(event.data);
                     data.value = await traverse(data.value, incomingReplacer);
-                    if (data.operation === 'get') {
+                    if (data.url === 'get') {
                         cachedRealtimeValues.set(data.fullPath, data.value);
                         realtimeListeners.get(data.fullPath)?.set(data.value);
-                    } else if (data.operation === 'filter') {
+                    } else if (data.url === 'filter') {
                         const key = data.eventName;
                         let value = cachedRealtimeValues.get(key) || [];
                         if (data.content === 'reset') {
@@ -79,7 +79,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                         }
                         cachedRealtimeValues.set(key, value);
                         realtimeListeners.get(key)?.set(value);
-                    } else if (data.operation === 'push') {
+                    } else if (data.url === '/db/push') {
                         realtimeListeners.get(data.eventName)?.set(data.value);
                     }
                 } catch (e) {
@@ -91,7 +91,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
         }
     }
 
-    function subscriptionFactory(eventName: string, data: any, operation: string) {
+    function subscriptionFactory(eventName: string, data: any, url: string, subscription?: boolean) {
         return function subscribe(callbackFn: (arg0: any) => void) {
             function documentChangeHandler(documentData: any) {
                 callbackFn(documentData);
@@ -104,7 +104,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             const eventStoreUnsubscribe = eventStore.subscribe(documentChangeHandler)
             if (eventStore.subscriptions.size === 1) {
                 const wsData = JSON.stringify({
-                    operation, eventName, ...data,
+                    subscription, url, eventName, ...data,
                     authorization: `Bearer ${auth.value.token}`
                 });
                 if (ws?.readyState === WebSocket.OPEN) {
@@ -186,8 +186,8 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
         HTTP: {
             size(data: { collection: string }): Promise<number> {
                 return (async () => {
-                    const result = await request('/db/length', {...data});
-                    return result.value;
+                    const result = await request('/db/size', {...data});
+                    return result;
                 })();
             },
             async map(data: { collection: string, callbackFn: fn | string, thisArg?: any }): Promise<Array<any>> {
@@ -196,7 +196,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             },
             async filter(data: { collection: string, operations: Array<any> }): Promise<any> {
                 const result = await request('/db/filter', data);
-                return result.value;
+                return result;
             },
             async slice(data: { collection: string, start: number, end?: number }): Promise<Array<document>> {
                 const result = await request('/db/slice', data);
@@ -204,23 +204,20 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             },
             async find(data: { collection: string, callbackFn: string, thisArg: any }): Promise<document> {
                 const result = await request('/db/find', data);
-                return result.value
+                return result;
             },
             async forEach(data: { collection: string }, callback: fn): Promise<unknown> {
-                const result = await request('/db/forEach', data);
+                const result = await request('/db/getAll', data);
                 return result.forEach(callback);
             },
             async push(data: { collection: string, value: any }): Promise<string> {
-                const result = await request(
-                    '/db/push',
-                    data
-                );
-                return result.value;
+                const result = await request('/db/push',data);
+                return result;
             },
             delete(data: { collection: string, id: string | number | symbol, path?: Array<string> }): Promise<boolean> {
                 return (async () => {
                     const result = await request('/db/delete', data);
-                    return result.value;
+                    return result;
                 })();
             },
             set(data: { collection: string, id: string | number | symbol, value: any, path?: Array<any> }): Promise<boolean> {
@@ -239,11 +236,11 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             },
             async get(data: { collection: string, id: string | number | symbol, path?: Array<any> }): Promise<document> {
                 const result = await request('/db/get', data);
-                return result.value;
+                return result;
             },
             async has(data: { collection: string, id: string | number | symbol }): Promise<boolean> {
                 const result = await request('/db/has', data);
-                return result.value;
+                return result;
             },
             async keys(data: { collection: string }): Promise<Array<string>> {
                 const result = await request('/db/keys', data);
@@ -257,8 +254,8 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
         WS: {
             size(data: { collection: string }): Promise<number> {
                 return (async () => {
-                    const result = await request('/db/length', {...data});
-                    return result.value;
+                    const result = await request('/db/size', {...data});
+                    return result;
                 })();
             },
             async map(data: { collection: string, callbackFn: fn | string, thisArg?: any }): Promise<Array<any>> {
@@ -267,7 +264,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             },
             async filter(data: { collection: string, operations: Array<any> }): Promise<any> {
                 const result = await request('/db/filter', data);
-                return result.value;
+                return result;
             },
             async slice(data: { collection: string, start: number, end?: number }): Promise<Array<document>> {
                 const result = await request('/db/slice', data);
@@ -275,7 +272,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             },
             async find(data: { collection: string, callbackFn: string, thisArg: any }): Promise<document> {
                 const result = await request('/db/find', data);
-                return result.value
+                return result
             },
             async forEach(data: { collection: string }, callback: fn): Promise<unknown> {
                 const result = await request('/db/forEach', data);
@@ -287,7 +284,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                         reject(new Error('Push timed out.'));
                     },5000);
                     // TODO : Change Random - Event name needs to be a globally unique id.
-                    const unsubscribe = subscriptionFactory(Math.random().toString(), data, 'push')(id => {
+                    const unsubscribe = subscriptionFactory(Math.random().toString(), data, '/db/push')(id => {
                         resolve(id);
                         unsubscribe();
                         clearTimeout(timeout);
@@ -297,7 +294,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             delete(data: { collection: string, id: string | number | symbol, path?: Array<string> }): Promise<boolean> {
                 return (async () => {
                     const result = await request('/db/delete', data);
-                    return result.value;
+                    return result;
                 })();
             },
             set(data: { collection: string, id: string | number | symbol, value: any, path?: Array<any> }): Promise<boolean> {
@@ -316,11 +313,11 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             },
             async get(data: { collection: string, id: string | number | symbol, path?: Array<any> }): Promise<document> {
                 const result = await request('/db/get', data);
-                return result.value;
+                return result;
             },
             async has(data: { collection: string, id: string | number | symbol }): Promise<boolean> {
                 const result = await request('/db/has', data);
-                return result.value;
+                return result;
             },
             async keys(data: { collection: string }): Promise<Array<string>> {
                 const result = await request('/db/keys', data);
@@ -354,7 +351,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             },
             async push(data: { collection: string, value: any }): Promise<string> {
                 const result = config.opHandlers.set(data);
-                return result.insertedId;
+                return result;
             },
             delete(data: { collection: string, id: string | number | symbol, path?: Array<string> }): Promise<boolean> {
                 return (async () => {
@@ -410,7 +407,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                         collection: path[0],
                         id: path[1],
                         path: path.slice(2)
-                    }, 'get');
+                    }, 'get', true);
                 } else {
                     return nestedProxyFactory([...path, property.toString()]);
                 }
@@ -521,7 +518,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             return subscriptionFactory(eventName, {
                 collection: this.collection,
                 operations: this.operations
-            }, 'filter');
+            }, 'filter', true);
         }
     }
 
@@ -598,22 +595,6 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
 
             async get(key: string): Promise<document> {
                 return connectors[config.connector].get({collection, id: key})
-            },
-
-            async entries() {
-                const resultMap = new Map();
-                await connectors[config.connector].forEach({collection}, (element: document) => {
-                    resultMap.set(element.id, element);
-                })
-                return resultMap.entries();
-            },
-
-            async values() {
-                const resultMap = new Map();
-                await connectors[config.connector].forEach({collection}, (element: document) => {
-                    resultMap.set(element.id, element);
-                })
-                return resultMap.values();
             },
 
             async has(id: string): Promise<boolean> {

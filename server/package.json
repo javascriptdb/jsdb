@@ -19,7 +19,6 @@
     "estree-walker": "^3.0.1",
     "jsonwebtoken": "^8.5.1",
     "lodash-es": "^4.17.21",
-    "vm2": "^3.9.11",
     "ws": "^8.5.0"
   }
 }
