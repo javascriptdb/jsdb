@@ -66,19 +66,14 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                 try {
                     const data = JSON.parse(event.data);
                     data.value = await traverse(data.value, incomingReplacer);
-                    if (data.url === 'get') {
-                        cachedRealtimeValues.set(data.fullPath, data.value);
-                        realtimeListeners.get(data.fullPath)?.set(data.value);
-                    } else if (data.url === 'filter') {
+                    if (data.url === '/db/get') {
                         const key = data.eventName;
-                        let value = cachedRealtimeValues.get(key) || [];
-                        if (data.content === 'reset') {
-                            value = data.value;
-                        } else if (data.content === 'drop') {
-                            value = []
-                        }
-                        cachedRealtimeValues.set(key, value);
-                        realtimeListeners.get(key)?.set(value);
+                        cachedRealtimeValues.set(key, data.value);
+                        realtimeListeners.get(key)?.set(data.value);
+                    } else if (data.url === '/db/filter') {
+                        const key = data.eventName;
+                        cachedRealtimeValues.set(key, data.value);
+                        realtimeListeners.get(key)?.set(data.value);
                     } else if (data.url === '/db/push') {
                         realtimeListeners.get(data.eventName)?.set(data.value);
                     }

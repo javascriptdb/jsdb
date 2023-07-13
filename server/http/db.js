@@ -26,7 +26,7 @@ export async function routeDb(operation, body) {
   let before, after = undefined;
   if(body.id) {
     // TODO : only get the document if there is a security rule or trigger that actually uses it, we could use acorn
-    before = opHandlers.get(body);
+    before = opHandlers.get({collection: body.collection, id: body.id});
   }
 
   await runSecurityRules(operation, body, before);
@@ -34,13 +34,13 @@ export async function routeDb(operation, body) {
     const result = opHandlers[operation](body);
     if(operationsWithSideEffects.includes(operation)) {
       if (body.id) {
-        after = opHandlers.get(body);
-        emitChange(body.collection, body.id, after);
+        after = opHandlers.get({collection: body.collection, id: body.id});
+        // emitChange(body.collection, body.id, body.value);
       }
       emitChange(body.collection, undefined)
     }
     setTimeout(() => {
-      executeTrigger(operation, body, result)
+      executeTrigger(operation, body, result, before, after)
     })
     return result;
   } catch (error) {

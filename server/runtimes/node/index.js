@@ -49,7 +49,7 @@ wsServer.on('connection', socket => {
     }
 
     if(parsedMessage.subscription === true) {
-      const unsubscribe = getEventStore(parsedMessage).subscribe(result => {
+      const unsubscribe = (await getEventStore(parsedMessage)).subscribe(result => {
         socket.send(JSON.stringify({
           value: result.value,
           eventName: parsedMessage.eventName,

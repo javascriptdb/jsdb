@@ -45,12 +45,13 @@ let storeByKey = new Map();
 let storesByCollection = new Map();
 let storeById = new Map();
 export async function getEventStore(body) {
+  // TODO : every time a new subscription is made, we should check the security rule, not only the first time as it should be user dependent
   // TODO : We should force the url to match the collection name etc, otherwise it could be a security problem
   const key = JSON.stringify(body);
   if (!storeByKey.has(key)) {
     // If the route fails, means they were not allowed to subscribe to this event
     const store = new CustomStore({
-      value: route(body.url, body),
+      value: await route(body.url, body),
       body
     });
     storeByKey.set(key, store);
@@ -60,20 +61,25 @@ export async function getEventStore(body) {
       }
       storesByCollection.get(body.collection).add(store);
     }
-    if(body.id) {
-      storeById.set(body.id, store);
-    }
+
+    return store;
+  } else {
+    return storeByKey.get(key)
   }
+
 }
 
-export function emitChange(collection, id, document){
-  if(id && storeById.has(id)) {
-    storeById.get(id).set(document);
-  }
+export function emitChange(collection, id, value){
+  // if(id && storeById.has(id)) {
+  //   const store = storeById.get(id);
+  //   storeById.get(id).set({value, body: store.value.body});
+  // }
   if(storesByCollection.has(collection)) {
-    storesByCollection.get(collection).forEach(store => {
-      const {body} = store.get();
-      store.set(route(body.url, body));
+    storesByCollection.get(collection).forEach(async store => {
+      const {body} = store.value;
+      // TODO : only do the DB operation, don't do security & triggers here
+      const value = await route(body.url, body)
+      store.set({value, body});
     });
   }
 };

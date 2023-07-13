@@ -248,16 +248,16 @@ await test('iterate using for await', async() => {
     assert.deepStrictEqual(msgs[0].text, 'FUN!')
 })
 
-// await test('subscribe to individual msg', async() => {
-//     let lastValue;
-//     const unsubscribe = db.msgs.x.subscribe(value => {
-//         lastValue = value
-//     });
-//     db.msgs.x.text = "IS LIVE!"
-//     await new Promise(resolve => setTimeout(resolve, 2000))
-//     unsubscribe();
-//     assert.equal(lastValue?.text,'IS LIVE!');
-// })
+await test('subscribe to individual msg', async() => {
+    let lastValue;
+    const unsubscribe = db.msgs.x.subscribe(value => {
+        lastValue = value
+    });
+    db.msgs.x.text = "IS LIVE!"
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    unsubscribe();
+    assert.equal(lastValue?.text,'IS LIVE!');
+})
 
 await test('clear msgs', async() => {
     await db.msgs.clear();
@@ -309,17 +309,17 @@ await test('clear logs', async() => {
     assert.deepStrictEqual(size, 0)
 })
 
-// await test('Subscribe filter', async () => {
-//     await db.logs.clear();
-//     let lastValue;
-//     const unsubscribe = db.logs.filter(log => log.text === 'LIVE LOG!').subscribe(value => {
-//         lastValue = value;
-//     });
-//     await db.logs.push({type:'info',text:'LIVE LOG!',date: new Date()});
-//     await new Promise(resolve => setTimeout(resolve, 2000))
-//     unsubscribe();
-//     assert.equal(lastValue[0]?.text,'LIVE LOG!');
-// })
+await test('Subscribe filter', async () => {
+    await db.logs.clear();
+    let lastValue;
+    const unsubscribe = db.logs.filter(log => log.text === 'LIVE LOG!').subscribe(value => {
+        lastValue = value;
+    });
+    await db.logs.push({type:'info',text:'LIVE LOG!',date: new Date()});
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    unsubscribe();
+    assert.equal(lastValue[0]?.text,'LIVE LOG!');
+})
 
 await test('clear logs', async() => {
     await db.logs.clear();
@@ -375,6 +375,7 @@ await test('clear logs', async() => {
 })
 
 await test('WS insert 10k', async() => {
+    await wsJsdb.db.logs.clear();
     const startMs = Date.now();
     for(let i = 0; i<10000;i++) {
         await wsJsdb.db.logs.push({type:'info',text:'Dummy log',date: new Date(),i});
