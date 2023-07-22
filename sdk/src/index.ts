@@ -161,19 +161,47 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
       this.set({});
     };
 
+    async signInWithProvider(provider: string) {
+        const csrfTokenResp =  await fetch(baseUrl + `/auth/csrf`, {
+            method: "get",
+            mode: 'cors',
+        })
+        const { csrfToken } = await csrfTokenResp.json()
+        const callbackUrl = window.location.origin;
+        const signInResp = await fetch(baseUrl + `/auth/signin/${provider}`, {
+            method: "post",
+            mode: 'cors',
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+                csrfToken,
+                callbackUrl
+            }),
+        })
+        console.log(signInResp)
+
+        // debugger
+        // // const data =  await signInResp.json()
+        // // window.location.href = data.url ?? callbackUrl
+        // console.log(signInResp)
+    }
+
     signIn = async (credentials: { email: string, password: string }) => {
-      try {
-        const {token, userId} = await request('/auth/signin', {...credentials});
-        this.set({token, userId});
-        if (typeof process !== 'object') {
-          localStorage.token = this.value.token;
-          localStorage.userId = this.value.userId;
+        try {
+            location.href = baseUrl + '/auth/signin';
+            console.log(credentials)
+            // this.set({token, userId})
+            // if (typeof process !== 'object') {
+            //     localStorage.token = this.value.token;
+            //     localStorage.userId = this.value.userId;
+            // }
+            // return true;
+        } catch (e) {
+            console.error(e);
+            throw new Error(`Error logging in, verify email and password`);
         }
-        return true;
-      } catch (e) {
-        throw new Error(`Error logging in, verify email and password`);
-      }
-    };
+    }
 
     createAccount = async (credentials: { email: string, password: string }) => {
       try {
