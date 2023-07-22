@@ -155,37 +155,37 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
       }
     }
 
-    signOut = () => {
-      delete localStorage.token;
-      delete localStorage.userId;
-      this.set({});
-    };
+        signOut = () => {
+            delete localStorage.token;
+            delete localStorage.userId;
+            this.set({})
+        }
+        async signInWithProvider(provider: string) {
+            const csrfTokenResp =  await fetch(baseUrl + `/auth/csrf`, {
+                credentials: "include",
+                method: "get",
+                mode: 'cors',
+            })
+            const { csrfToken } = await csrfTokenResp.json()
+            const callbackUrl = window.location.origin;
+            const signInResp = await fetch(baseUrl + `/auth/signin/${provider}`, {
+                method: "post",
+                credentials: "include",
+                mode: 'cors',
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({
+                    csrfToken,
+                    callbackUrl
+                }),
+            })
 
-    async signInWithProvider(provider: string) {
-        const csrfTokenResp =  await fetch(baseUrl + `/auth/csrf`, {
-            method: "get",
-            mode: 'cors',
-        })
-        const { csrfToken } = await csrfTokenResp.json()
-        const callbackUrl = window.location.origin;
-        const signInResp = await fetch(baseUrl + `/auth/signin/${provider}`, {
-            method: "post",
-            mode: 'cors',
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-                csrfToken,
-                callbackUrl
-            }),
-        })
-        console.log(signInResp)
-
-        // debugger
-        // // const data =  await signInResp.json()
-        // // window.location.href = data.url ?? callbackUrl
-        // console.log(signInResp)
-    }
+            const data =  await signInResp.json()
+            debugger
+            window.location.href = data.url ?? callbackUrl
+            console.log(provider , csrfToken, callbackUrl, signInResp)
+        }
 
     signIn = async (credentials: { email: string, password: string }) => {
         try {

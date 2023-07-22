@@ -41,9 +41,9 @@ async function convertIncomingMessageToRequest(req){
   for (var key in req.headers) {
     if (req.headers[key]) headers.append(key, req.headers[key]);
   }
-  const url = new URL(req.url, `http://${req.headers.host}`);
   const body = req.method === 'POST' ? await getBody(req) : null;
-  let request = new Request(url, {
+  const baseUrl =  req.headers.origin || `http://${req.headers.host}`
+  let request = new Request(new URL(req.url, baseUrl), {
     method: req.method,
     body,
     headers,
@@ -58,23 +58,40 @@ const server = http.createServer(async (req, res) => {
     // Auth.js library expects http://localhost:3001/auth/signin
 
     const headers = {
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
       'Access-Control-Allow-Headers': '*',
     };
+    headers['Access-Control-Allow-Credentials'] = true
+    if(req.headers.origin) {
+      headers['Access-Control-Allow-Origin'] = req.headers.origin
+    }
     if (req.method === 'OPTIONS') {
       res.writeHead(204, headers);
       res.end();
       return;
     }
-    const request = await convertIncomingMessageToRequest(req)
-    const auth = await Auth(request, optionsEnvVar);
+    // pre-flight does not allow
 
-    if(req.url.includes('/auth/signin/') && request.method === 'POST' && auth.status === 302 && auth.headers.get('location')) {
+    const request = await convertIncomingMessageToRequest(req)
+
+    const auth = await Auth(request, optionsEnvVar);
+    for (const headerName of auth.headers.keys()) {
+      const header = auth.headers.get(headerName);
+      headers[headerName]= header
+    }
+    if(req.url === '/auth/csrf' && req.headers.origin) {
+      const body = await auth.json();
+      console.log('1'+body.csrfToken)
+      headers['access-control-expose-headers'] = 'set-cookie'
+      // headers['Set-Cookie']= `next-auth.csrf-token=${body.csrfToken}; next-auth.callback-url=${req.headers.origin}`
+      // headers['Set-Cookie'] = auth.headers.get('set-cookie')
+      res.writeHead(200, headers);
+      res.write(JSON.stringify(body))
+      return res.end();
+    } else if(req.url.includes('/auth/signin/') && request.method === 'POST' && auth.status === 302 && auth.headers.get('location')) {
       headers.Location = auth.headers.get('location')
       res.writeHead(302, headers);
       console.log('here')
-      // res.writeHead(200, headers);
       return res.end();
     } else {
       const text = await auth.text()
