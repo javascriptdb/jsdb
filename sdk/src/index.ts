@@ -168,10 +168,11 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             })
             const { csrfToken } = await csrfTokenResp.json()
             const callbackUrl = window.location.origin;
-            const signInResp = await fetch(baseUrl + `/auth/signin/${provider}`, {
+            const resp = await fetch(baseUrl + `/auth/signin/${provider}`, {
                 method: "post",
                 credentials: "include",
                 mode: 'cors',
+                redirect: 'follow',
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
@@ -180,11 +181,9 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                     callbackUrl
                 }),
             })
-
-            const data =  await signInResp.json()
-            debugger
-            window.location.href = data.url ?? callbackUrl
-            console.log(provider , csrfToken, callbackUrl, signInResp)
+            const link = await resp.text();
+            console.log(link)
+            window.location.href = link
         }
 
     signIn = async (credentials: { email: string, password: string }) => {

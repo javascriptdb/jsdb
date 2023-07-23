@@ -60,8 +60,8 @@ const server = http.createServer(async (req, res) => {
     const headers = {
       'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
       'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Credentials': true
     };
-    headers['Access-Control-Allow-Credentials'] = true
     if(req.headers.origin) {
       headers['Access-Control-Allow-Origin'] = req.headers.origin
     }
@@ -70,29 +70,32 @@ const server = http.createServer(async (req, res) => {
       res.end();
       return;
     }
-    // pre-flight does not allow
-
     const request = await convertIncomingMessageToRequest(req)
-
     const auth = await Auth(request, optionsEnvVar);
+
     for (const headerName of auth.headers.keys()) {
       const header = auth.headers.get(headerName);
       headers[headerName]= header
     }
     if(req.url === '/auth/csrf' && req.headers.origin) {
       const body = await auth.json();
-      console.log('1'+body.csrfToken)
       headers['access-control-expose-headers'] = 'set-cookie'
-      // headers['Set-Cookie']= `next-auth.csrf-token=${body.csrfToken}; next-auth.callback-url=${req.headers.origin}`
-      // headers['Set-Cookie'] = auth.headers.get('set-cookie')
       res.writeHead(200, headers);
       res.write(JSON.stringify(body))
       return res.end();
-    } else if(req.url.includes('/auth/signin/') && request.method === 'POST' && auth.status === 302 && auth.headers.get('location')) {
-      headers.Location = auth.headers.get('location')
-      res.writeHead(302, headers);
-      console.log('here')
-      return res.end();
+    } else if(
+      req.url.includes('/auth/signin/') &&
+      request.method === 'POST' &&
+      auth.status === 302 &&
+      auth.headers.get('location')) {
+      if(req.headers.origin === process.env.SERVER_URL) {
+        res.writeHead(302, headers);
+        return res.end();
+      } else {
+        res.writeHead(200, headers)
+        res.write(auth.headers.get('location'))
+        return res.end();
+      }
     } else {
       const text = await auth.text()
       headers['Content-Type'] = 'text/html'
