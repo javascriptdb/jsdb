@@ -22,25 +22,25 @@ async function runSecurityRules(operation, body, before) {
 
 const operationsWithSideEffects = ['push', 'set', 'delete', 'clear'];
 
-export async function routeDb(operation, body) {
+export async function routeDb(operation, body,user,skipSecurityRules,skipTrigger) {
   let before, after = undefined;
   if(body.id) {
     // TODO : only get the document if there is a security rule or trigger that actually uses it, we could use acorn
     before = opHandlers.get({collection: body.collection, id: body.id});
   }
 
-  await runSecurityRules(operation, body, before);
+  if(!skipSecurityRules)await runSecurityRules(operation, body, before);
   try {
     const result = opHandlers[operation](body);
-    if(operationsWithSideEffects.includes(operation)) {
-      if (body.id) {
-        after = opHandlers.get({collection: body.collection, id: body.id});
-        // emitChange(body.collection, body.id, body.value);
-      }
-      emitChange(body.collection, undefined)
-    }
+
     setTimeout(() => {
-      executeTrigger(operation, body, result, before, after)
+      if(operationsWithSideEffects.includes(operation)) {
+        if (body.id) {
+          after = opHandlers.get({collection: body.collection, id: body.id});
+        }
+        emitChange(body.collection)
+      }
+      if(!skipTrigger)executeTrigger(operation, body, result, before, after)
     })
     return result;
   } catch (error) {

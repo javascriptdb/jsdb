@@ -2,8 +2,9 @@ import "../index.js";
 import {initApp} from "@jsdb/sdk";
 import * as assert from "assert";
 import {opHandlers} from "../opHandlersBetterSqlite.js";
+import fs from "node:fs";
 
-const {db, auth, functions} = await initApp({serverUrl: 'http://localhost:3001', connector: 'HTTP'})
+const {db, auth, functions, storage} = await initApp({serverUrl: 'http://localhost:3001', connector: 'HTTP'})
 
 const passedMap = new Map();
 const failedMap = new Map();
@@ -26,10 +27,30 @@ async function test(name, callback) {
 //     await auth.signIn({email: `test@javascriptdb.com`, password: 'dhs87a6dasdg7as8db68as67da'})
 // })
 
+
+
+
 await test('Get all table names', async() => {
     const names = await db.getTables();
     assert.equal(names.length > 0, true)
 })
+
+await test('Put file low level', async() => {
+    const file = await fs.readFileSync('./api.test.js');
+    const preSignedGetUrl = await storage.put(file);
+    console.assert(preSignedGetUrl.includes('http'));
+});
+
+await test('Put file inside document', async() => {
+    await db.posts.clear();
+    const id = await db.posts.push({
+        title: 'Hello world',
+        body: 'This is my first post',
+        attachment: await storage.put(await fs.readFileSync('./tiny.webp'))
+    })
+    const url = await db.posts[id].attachment;
+    console.assert(url.includes('http'));
+});
 
 await test('Initial clear map using .clear()', async() => {
     await db.msgs.clear();
@@ -327,16 +348,16 @@ await test('clear logs', async() => {
     assert.deepStrictEqual(size, 0)
 })
 
-// await test('call remote function', async() => {
-//     const result = await functions.helloWorld();
-//     assert.deepStrictEqual(result.message, 'IT WORKS!')
-// });
+await test('call remote function', async() => {
+    const result = await functions.helloWorld();
+    assert.deepStrictEqual(result.message, 'IT WORKS!')
+});
 
-// await test('call function & remotely insert 10k records', async() => {
-//     const result = await functions.remoteInserts();
-//     console.log('10k Remote insert time', result.time)
-//     assert.deepStrictEqual(result.time < 300, true)
-// });
+await test('call function & remotely insert 10k records', async() => {
+    const result = await functions.remoteInserts();
+    console.log('10k Remote insert time', result.time)
+    assert.deepStrictEqual(result.time < 300, true)
+});
 
 // LOCAL TESTS
 
@@ -387,6 +408,7 @@ await test('WS insert 10k', async() => {
     assert.deepStrictEqual(time < 5000, true);
     assert.deepStrictEqual(size, 10000);
 });
+
 
 console.log('PASSED',passedMap.size)
 console.log('FAILED',failedMap.size)

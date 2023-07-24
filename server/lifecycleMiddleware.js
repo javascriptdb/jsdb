@@ -56,21 +56,17 @@ export async function importFromPath(extractedBundlePath) {
     } catch (e) {
         if (e.code !== 'ENOENT') console.error(e);
     }
-
-    const bundleHostingPath = path.resolve(extractedBundlePath, 'hosting')
-    const serverHostingPath = path.resolve(process.cwd(), '.jsdb', 'hosting')
-    console.log({rules, triggers, functions, indexes});
-    try {
-        if (bundleHostingPath !== serverHostingPath) {
-            console.log('Copy hosting from', bundleHostingPath, serverHostingPath);
-            await fsPromises.cp(bundleHostingPath, serverHostingPath, {recursive: true, force: true});
-        }
-    } catch (e) {
-        if (e.code !== 'ENOENT') console.error(e);
-    }
 }
 
 
 const defaultsPath = path.resolve(url.fileURLToPath(import.meta.url), '../.jsdb');
 
 await importFromPath(defaultsPath);
+
+const customPath = path.resolve(process.cwd(), '.jsdb');
+if(customPath !== defaultsPath && fsPromises.access(customPath).catch(e => e.code !== 'ENOENT')) {
+    console.log(`Importing from custom path ${customPath}`);
+    await importFromPath(customPath);
+}
+
+

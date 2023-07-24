@@ -1,0 +1,32 @@
+<html>
+<head>
+    <title>Scratch 14</title>
+
+</head>
+<body style="background-color: gray">
+<input id="fileInput" type="file">
+<img id="img"/>
+<HTMLMediaElement id="mediaElement"/>
+</body>
+<script>
+  async function readURL(e) {
+    const file = e.target.files[0];
+
+    // if (input.files && input.files[0]) {
+    //     var reader = new FileReader(); // FileReader is a built-in object of JavaScript
+    //     reader.onload = function (e) {
+    //         $('img').attr('src', e.target.result);
+    //     }
+    //     reader.readAsDataURL(input.files[0]);
+    // }
+    console.log(typeof file)
+    const arrayBuffer = await file.arrayBuffer(file);
+    const subtleCrypto = window.crypto.subtle;
+    subtleCrypto.digest('SHA-256', arrayBuffer).then(data => console.log(data));
+    // document.getElementById('mediaElement').setAttribute('srcObject', file);
+    // document.getElementById('img').setAttribute('srcObject', file);
+  }
+
+  document.getElementById('fileInput').addEventListener('change', readURL, true);
+</script>
+</html>
