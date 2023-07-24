@@ -31,11 +31,13 @@ async function convertIncomingMessageToRequest(req){
   const body = req.method === 'POST' ? await getBody(req) : null;
   // TODO remove hardcoded http
   const baseUrl =  req.headers.origin || `http://${req.headers.host}`
-  let request = new Request(new URL(req.url, baseUrl), {
-    method: req.method,
+  console.log((new URL(req.url, baseUrl)).pathname)
+  const reqObj = {
+  ...req,
     body,
     headers,
-  })
+  }
+  let request = new Request(new URL(req.url, baseUrl), reqObj)
   return request
 }
 async function convertResponseToServerResponse(response, serverResponse) {
