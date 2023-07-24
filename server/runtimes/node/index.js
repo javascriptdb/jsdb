@@ -1,28 +1,16 @@
 import * as http from 'http';
 import {WebSocketServer} from 'ws';
 import {route} from '../../http/base.js';
-import {parseData, readStreamToPromise} from '../../utils.js';
+import {parseData, readReadableStream, readStreamToPromise} from '../../utils.js';
 import jwt from 'jsonwebtoken';
 import {getEventStore} from '../../ws/ws.js';
-import {Auth} from '@auth/core';
-import GitHub from '@auth/core/providers/github';
+import {AuthModule} from '../../http/auth.js';
 
 const wsServer = new WebSocketServer({noServer: true});
 
 const hostname = 'localhost'
 const port = process.env.PORT || 3001;
 
-const optionsEnvVar = {
-  // Configure one or more authentication providers
-  providers: [
-    GitHub({
-      clientId: '8a9219d06d63a95bf1af',
-      clientSecret: '746ce3dd62cfbd400289e7647063ecc907ffab17',
-    }),
-  ],
-  trustHost: true,
-  secret: '280be61e650f6ca8476717130dc5c15ef5c75a1bf20764c991c6ad06dfea1687'
-}
 async function getBody(request) {
   return new Promise((resolve) => {
     const bodyParts = [];
@@ -35,13 +23,13 @@ async function getBody(request) {
     });
   });
 }
-
 async function convertIncomingMessageToRequest(req){
-  var headers = new Headers();
+  const headers = new Headers();
   for (var key in req.headers) {
     if (req.headers[key]) headers.append(key, req.headers[key]);
   }
   const body = req.method === 'POST' ? await getBody(req) : null;
+  // TODO remove hardcoded http
   const baseUrl =  req.headers.origin || `http://${req.headers.host}`
   let request = new Request(new URL(req.url, baseUrl), {
     method: req.method,
@@ -50,79 +38,43 @@ async function convertIncomingMessageToRequest(req){
   })
   return request
 }
-
+async function convertResponseToServerResponse(response, serverResponse) {
+  const headers = {};
+  for (const headerName of response.headers.keys()) {
+    const header = response.headers.get(headerName);
+    headers[headerName] = header
+  }
+  serverResponse.writeHead(response.status, headers)
+  if(response.body) {
+    const body = await readReadableStream(response.body)
+    serverResponse.write(body)
+  }
+}
 
 const server = http.createServer(async (req, res) => {
-  try {
-    // req.url is /auth/signin
-    // Auth.js library expects http://localhost:3001/auth/signin
-
-    const headers = {
-      'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
-      'Access-Control-Allow-Headers': '*',
-      'Access-Control-Allow-Credentials': true
-    };
-    if(req.headers.origin) {
-      headers['Access-Control-Allow-Origin'] = req.headers.origin
-    }
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204, headers);
-      res.end();
-      return;
-    }
-    const request = await convertIncomingMessageToRequest(req)
-    const auth = await Auth(request, optionsEnvVar);
-
-    for (const headerName of auth.headers.keys()) {
-      const header = auth.headers.get(headerName);
-      headers[headerName]= header
-    }
-    if(req.url === '/auth/csrf' && req.headers.origin) {
-      const body = await auth.json();
-      headers['access-control-expose-headers'] = 'set-cookie'
-      res.writeHead(200, headers);
-      res.write(JSON.stringify(body))
-      return res.end();
-    } else if(
-      req.url.includes('/auth/signin/') &&
-      request.method === 'POST' &&
-      auth.status === 302 &&
-      auth.headers.get('location')) {
-      if(req.headers.origin === process.env.SERVER_URL) {
-        res.writeHead(302, headers);
-        return res.end();
-      } else {
-        res.writeHead(200, headers)
-        res.write(auth.headers.get('location'))
-        return res.end();
-      }
-    } else {
-      const text = await auth.text()
-      headers['Content-Type'] = 'text/html'
-      res.writeHead(200, headers);
-      res.write(text)
-      return res.end();
-    }
-
-  } catch (e) {
-    console.log(e)
-    return res.end();
+  const request = await convertIncomingMessageToRequest(req)
+  const authResp = await AuthModule(request);
+  if(authResp)  {
+    await convertResponseToServerResponse(authResp, res);
+    // Todo, remove this return and see if the user is auth or not
+    return res.end()
   }
-  // if (req.method === 'POST') {
-  //   const bodyString = await readStreamToPromise(req);
-  //   const body = parseData(bodyString);
-  //   const result = await route(req.url, body);
-  //   if (result?.error) {
-  //     res.statusCode = result.statusCode || 500;
-  //     res.setHeader('Content-Type', 'application/json');
-  //     res.end(JSON.stringify(result.error));
-  //   } else {
-  //     res.statusCode = 200;
-  //     res.setHeader('Content-Type', 'application/json');
-  //     res.end(JSON.stringify(result ?? null));
-  //   }
-  // }
-  // res.end();
+
+  if (req.method === 'POST') {
+    const bodyString = await readStreamToPromise(req);
+    const body = parseData(bodyString);
+    const result = await route(req.url, body);
+    if (result?.error) {
+      res.statusCode = result.statusCode || 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(result.error));
+    } else {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(result ?? null));
+    }
+  }
+  res.end();
 });
 
 server.listen(port, hostname, () => {
