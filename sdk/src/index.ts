@@ -185,6 +185,27 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             console.log(link)
             window.location.href = link
         }
+        async defaultSignIn() {
+            return new Promise((resolve, reject) => {
+                const  width = 450, height = 550, left = (screen.width - width) / 2, top = (screen.height - height) / 2;
+                let params = `width=${width}, height=${height}, top=${top}, left=${left}, titlebar=no, location=yes`
+                let timeout = setTimeout(() => {
+                    reject({message:`signInWith timeout exceeded`})
+                }, 10*60*1000)
+                let loginWindow: any;
+                const url = new URL('/auth/signin', baseUrl);
+                const uniqueWindowId = `authorizationJavascriptDatabase`;
+                const handleMessage = (e: MessageEvent)=> {
+                    const {token, user} = e.data;
+                    clearTimeout(timeout);
+                    loginWindow.close();
+                    window.removeEventListener('message', handleMessage)
+                    resolve({token, user});
+                }
+                window.addEventListener("message", handleMessage , false);
+                loginWindow = window.open(url.toString(), uniqueWindowId, params)
+            })
+        }
 
     signIn = async (credentials: { email: string, password: string }) => {
         try {
