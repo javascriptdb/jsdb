@@ -82,7 +82,7 @@ export async function AuthModule(request) {
     }
     if(url.pathname.includes('auth/callback') ) {
       headers.set('Content-type', 'text/html')
-      return new Response(`<script></script>window.close();</script>`, {headers, status: 200});
+      return new Response(`<script>window.close();</script>`, {headers, status: 200});
     }
 
     // comes from sdk and all redirections needs to be triggered manually from the sdk
