@@ -160,14 +160,37 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
             delete localStorage.userId;
             this.set({})
         }
+        async singInCallback(link: string) {
+            const csrfTokenResp =  await fetch(baseUrl + `/auth/csrf`, {
+                method: "get",
+                mode: 'cors',
+            })
+            const { csrfToken } = await csrfTokenResp.json()
+            const url = new URL(link);
+            const newUrl = new URL(url.pathname, baseUrl)
+            for(const name of url.searchParams.keys()) {
+                newUrl.searchParams.set(name, <string>url.searchParams.get(name))
+            }
+            newUrl.searchParams.set('csrfToken', csrfToken);
+            debugger
+            const resp =  await fetch(newUrl.href, {
+                method: "get",
+                credentials: "include",
+                mode: 'cors',
+                redirect: 'follow',
+            })
+            console.log('sucesss', resp)
+        }
         async signInWithProvider(provider: string) {
+            // do not modify
             const csrfTokenResp =  await fetch(baseUrl + `/auth/csrf`, {
                 credentials: "include",
                 method: "get",
                 mode: 'cors',
             })
             const { csrfToken } = await csrfTokenResp.json()
-            const callbackUrl = window.location.origin;
+            const callbackUrl = baseUrl;
+            console.log(callbackUrl)
             const resp = await fetch(baseUrl + `/auth/signin/${provider}`, {
                 method: "post",
                 credentials: "include",
@@ -178,11 +201,10 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                 },
                 body: new URLSearchParams({
                     csrfToken,
-                    callbackUrl
+                    callbackUrl,
                 }),
             })
             const link = await resp.text();
-            console.log(link)
             window.location.href = link
         }
         async defaultSignIn() {
