@@ -30,7 +30,7 @@ async function convertIncomingMessageToRequest(req){
   }
   const body = req.method === 'POST' ? await getBody(req) : null;
   // TODO remove hardcoded http
-  const baseUrl =  req.headers.origin || `http://${req.headers.host}`
+  const baseUrl = process.env.SERVER_URL
   console.log((new URL(req.url, baseUrl)).pathname)
   const reqObj = {
   ...req,

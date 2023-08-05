@@ -1,5 +1,6 @@
 import {Auth} from '@auth/core';
 import GitHub from '@auth/core/providers/github';
+import {readReadableStream} from '../utils.js';
 
 const optionsEnvVar = {
   // Configure one or more authentication providers
@@ -69,6 +70,16 @@ export async function AuthModule(request) {
     if (request.method === 'OPTIONS') {
       return new Response(null, {headers, status: 204});
     }
+    if(url.pathname.includes('auth/signin/')) {
+      const body = await readReadableStream(request.clone().body)
+      const searchParams = new URLSearchParams(body);
+      if(searchParams?.get('customProviderSignin') === 'true') {
+        const pathname = (new URL(request.url)).pathname
+        const clone = new Request(new URL(pathname, process.env.SERVER_URL) , request)
+        request = clone
+        console.log('here')
+      }
+    }
     const auth = await Auth(request, optionsEnvVar);
     headers.set('access-control-expose-headers', 'set-cookie')
     // merge both auth and added headers
@@ -84,10 +95,10 @@ export async function AuthModule(request) {
       headers.set('Content-type', 'text/html')
       return new Response(`<script>window.close();</script>`, {headers, status: 200});
     }
-
     // comes from sdk and all redirections needs to be triggered manually from the sdk
-    const origin = request.headers.get('origin')
-    if (auth.status === 302 && origin && origin !== process.env.SERVER_URL) {
+    let origin = request.headers.get('origin')
+    if(origin) origin = new URL(origin);
+    if (auth.status === 302 && origin && origin.href !== process.env.SERVER_URL) {
       return new Response(auth.headers.get('location'), {headers, status: 200});
     } else {
       return  auth

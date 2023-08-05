@@ -1,3 +1,4 @@
+import {getSignInPopup} from './providerSignin'
 type document = { id: string, [key: string]: any }
 type fn = (v: any) => any
 
@@ -155,79 +156,55 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
       }
     }
 
-        signOut = () => {
-            delete localStorage.token;
-            delete localStorage.userId;
-            this.set({})
-        }
-        async singInCallback(link: string) {
-            const csrfTokenResp =  await fetch(baseUrl + `/auth/csrf`, {
-                method: "get",
-                mode: 'cors',
-            })
-            const { csrfToken } = await csrfTokenResp.json()
-            const url = new URL(link);
-            const newUrl = new URL(url.pathname, baseUrl)
-            for(const name of url.searchParams.keys()) {
-                newUrl.searchParams.set(name, <string>url.searchParams.get(name))
+    signOut = () => {
+        delete localStorage.token;
+        delete localStorage.userId;
+        this.set({})
+    }
+    async signInWithProvider(provider: string) {
+        return new Promise((resolve, reject) => {
+            const  width = 450, height = 550, left = (screen.width - width) / 2, top = (screen.height - height) / 2;
+            let params = `width=${width}, height=${height}, top=${top}, left=${left}, titlebar=no, location=yes`
+            let timeout = setTimeout(() => {
+                reject({message:`signInWith timeout exceeded`})
+            }, 60*60*1000)
+            let loginWindow: any;
+            const url = new URL('/', baseUrl);
+            const uniqueWindowId = `authorizationJavascriptDatabase`;
+            const handleMessage = (e: MessageEvent)=> {
+                const {token, user} = e.data;
+                clearTimeout(timeout);
+                loginWindow.close();
+                window.removeEventListener('message', handleMessage)
+                resolve({token, user});
             }
-            newUrl.searchParams.set('csrfToken', csrfToken);
-            debugger
-            const resp =  await fetch(newUrl.href, {
-                method: "get",
-                credentials: "include",
-                mode: 'cors',
-                redirect: 'follow',
-            })
-            console.log('sucesss', resp)
-        }
-        async signInWithProvider(provider: string) {
-            // do not modify
-            const csrfTokenResp =  await fetch(baseUrl + `/auth/csrf`, {
-                credentials: "include",
-                method: "get",
-                mode: 'cors',
-            })
-            const { csrfToken } = await csrfTokenResp.json()
-            const callbackUrl = baseUrl;
-            console.log(callbackUrl)
-            const resp = await fetch(baseUrl + `/auth/signin/${provider}`, {
-                method: "post",
-                credentials: "include",
-                mode: 'cors',
-                redirect: 'follow',
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                    csrfToken,
-                    callbackUrl,
-                }),
-            })
-            const link = await resp.text();
-            window.location.href = link
-        }
-        async defaultSignIn() {
-            return new Promise((resolve, reject) => {
-                const  width = 450, height = 550, left = (screen.width - width) / 2, top = (screen.height - height) / 2;
-                let params = `width=${width}, height=${height}, top=${top}, left=${left}, titlebar=no, location=yes`
-                let timeout = setTimeout(() => {
-                    reject({message:`signInWith timeout exceeded`})
-                }, 10*60*1000)
-                let loginWindow: any;
-                const url = new URL('/auth/signin', baseUrl);
-                const uniqueWindowId = `authorizationJavascriptDatabase`;
-                const handleMessage = (e: MessageEvent)=> {
-                    const {token, user} = e.data;
-                    clearTimeout(timeout);
-                    loginWindow.close();
-                    window.removeEventListener('message', handleMessage)
-                    resolve({token, user});
-                }
-                window.addEventListener("message", handleMessage , false);
-                loginWindow = window.open(url.toString(), uniqueWindowId, params)
-            })
-        }
+            window.addEventListener("message", handleMessage , false);
+            loginWindow = window.open(url.toString(), uniqueWindowId, params)
+            loginWindow.document.write(getSignInPopup(baseUrl, provider));
+        })
+    }
+
+    async defaultSignIn() {
+        return new Promise((resolve, reject) => {
+            const  width = 450, height = 550, left = (screen.width - width) / 2, top = (screen.height - height) / 2;
+            let params = `width=${width}, height=${height}, top=${top}, left=${left}, titlebar=no, location=yes`
+            let timeout = setTimeout(() => {
+                reject({message:`signInWith timeout exceeded`})
+                }, 60*60*1000)
+            let loginWindow: any;
+            const url = new URL('/auth/signin', baseUrl);
+            const uniqueWindowId = `authorizationJavascriptDatabase`;
+            const handleMessage = (e: MessageEvent)=> {
+                const {token, user} = e.data;
+                clearTimeout(timeout);
+                loginWindow.close();
+                window.removeEventListener('message', handleMessage)
+                resolve({token, user});
+            }
+            window.addEventListener("message", handleMessage , false);
+            loginWindow = window.open(url.toString(), uniqueWindowId, params)
+        })
+    }
 
     signIn = async (credentials: { email: string, password: string }) => {
         try {
