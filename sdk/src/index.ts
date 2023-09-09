@@ -25,6 +25,9 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
     },
     async delete(url: string) {
       return await request(`/storage/delete`, {url});
+    },
+    async getSignedUrl(path: string) {
+      return await request(`/storage/getSignedUrl`, {path});
     }
   }
 
@@ -338,6 +341,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
     LOCAL: {
       size(data: { collection: string }): Promise<number> {
         return (async () => {
+          // TODO : using ophandlers directly skips the rules & triggers
           return config.opHandlers.size({collection: data.collection});
         })();
       },

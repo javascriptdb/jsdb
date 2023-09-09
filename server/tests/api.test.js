@@ -38,7 +38,8 @@ await test('Get all table names', async() => {
 await test('Put file low level', async() => {
     const file = await fs.readFileSync('./api.test.js');
     const preSignedGetUrl = await storage.put(file);
-    console.assert(preSignedGetUrl.includes('http'));
+    const existsResponse = await fetch(preSignedGetUrl);
+    assert.equal(existsResponse.ok, true);
 });
 
 await test('Put file inside document', async() => {
@@ -48,9 +49,31 @@ await test('Put file inside document', async() => {
         body: 'This is my first post',
         attachment: await storage.put(await fs.readFileSync('./tiny.webp'))
     })
+
     const url = await db.posts[id].attachment;
-    console.assert(url.includes('http'));
+    const existsResponse = await fetch(url);
+
+    assert.equal(existsResponse.ok, true);
 });
+
+await test('Add and delete file', async() => {
+    const file = await fs.readFileSync('./testfile.txt');
+    const preSignedGetUrl = await storage.put(file);
+    const existsResponse = await fetch(preSignedGetUrl);
+    assert.equal(existsResponse.ok, true);
+
+    await storage.delete(preSignedGetUrl);
+    const notExistsResponse = await fetch(preSignedGetUrl);
+    assert.equal(notExistsResponse.ok, false);
+})
+
+await test('Manually get read signed url', async() => {
+    const file = await fs.readFileSync('./testfile.txt');
+    const response = await storage.put(file,'/testfile.txt');
+    const preSignedGetUrl = await storage.getSignedUrl('/testfile.txt');
+    const existsResponse = await fetch(preSignedGetUrl);
+    assert.equal(existsResponse.ok, true);
+})
 
 await test('Initial clear map using .clear()', async() => {
     await db.msgs.clear();

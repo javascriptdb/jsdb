@@ -1,6 +1,7 @@
 const accessKeyId = process.env.S3_ACCESS_KEY_ID;
 const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
 const s3BucketUrl = process.env.S3_BUCKET_URL;
+const mode = process.env.STORAGE_MODE || 'local'; // s3 | local
 
 import { AwsV4Signer, AwsClient } from 'aws4fetch'
 
@@ -29,6 +30,7 @@ async function signUrl(path, method) {
 }
 
 export async function routeStorage(operation,body) {
+  // TODO : call security rules
   if(operation === 'getSignedUrls') {
     let path = body.path;
     if(!path) {
@@ -47,8 +49,7 @@ export async function routeStorage(operation,body) {
     await client.fetch(url, {
       method: 'DELETE',
     })
-  } else if (operation === 'getSignerUrl') {
-    const getSignedUrl = await signUrl(body.path, 'GET');
-    return getSignedUrl;
+  } else if (operation === 'getSignedUrl') {
+    return signUrl(body.path, 'GET');
   }
 }
