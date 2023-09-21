@@ -1,6 +1,8 @@
 import {Auth} from '@auth/core';
 import GitHub from '@auth/core/providers/github';
 import {readReadableStream} from '../utils.js';
+import {decode} from '@auth/core/jwt';
+import {sdkDb} from './sdk.js';
 
 const optionsEnvVar = {
   // Configure one or more authentication providers
@@ -11,7 +13,7 @@ const optionsEnvVar = {
     }),
   ],
   trustHost: true,
-  secret: '280be61e650f6ca8476717130dc5c15ef5c75a1bf20764c991c6ad06dfea1687',
+  secret: process.env.JWT_SECRET,
   cookies: {
     csrfToken: {
       name: 'next-auth.csrf-token',
@@ -35,26 +37,26 @@ const optionsEnvVar = {
   callbacks: {
     async signIn(args) {
     // async signIn({user, account, profile, email, credentials}) {
-      console.log(`signIn callback: ${JSON.stringify(args)}`)
+     // console.log(`signIn callback`)
       return true
     },
     // async redirect({ url, baseUrl }) {
     async redirect(args) {
-      console.log(`redirect callback: ${JSON.stringify(args)}`)
+      //console.log(`redirect callback: ${JSON.stringify(args)}`)
       return null
       //return baseUrl
     },
     // async session({session, user, token}) {
     async session(args) {
-      console.log(`session callback: ${JSON.stringify(args)}`)
+      //console.log(`session callback: ${JSON.stringify(args)}`)
       return args.session
     },
     // async jwt({token, user, account, profile, isNewUser}) {
     async jwt(args) {
-      console.log(`jwt callback: ${JSON.stringify(args)}`)
-      return args.token
+     console.log(`jwt callback: ${JSON.stringify(args)}`)
+      return args.token;
     }
-  }
+  },
 }
 // Request https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API needed by Auth.js
 export async function AuthModule(request) {
@@ -86,6 +88,9 @@ export async function AuthModule(request) {
     for (const headerName of auth.headers.keys()) {
       const header = auth.headers.get(headerName);
       headers.set(headerName, header)
+      if (headerName === 'set-cookie') {
+        console.log(header)
+      }
     }
     for (const headerName of headers.keys()) {
       const header = headers.get(headerName);
@@ -93,12 +98,29 @@ export async function AuthModule(request) {
     }
     if(url.pathname.includes('auth/callback') ) {
       headers.set('Content-type', 'text/html')
-      return new Response(`<script>window.close();</script>`, {headers, status: 200});
+      const codedSessionToken = headers.get('set-cookie')
+        ?.split(';')
+        ?.map(dirtyCookie => dirtyCookie.split(','))
+        ?.flat()
+        ?.filter(keyValue => keyValue.includes('next-auth.session-token'))?.[0]
+        ?.split('=')?.[1];
+      const decodedSessionToken = await decode({
+        token: codedSessionToken,
+        secret: process.env.JWT_SECRET,
+      })
+
+      const resp = `
+<script>console.log(window, parent); window.opener.postMessage('${JSON.stringify({
+        token: codedSessionToken
+      })}', '*');</script>
+`
+      return new Response(resp, {headers, status: 200});
     }
     // comes from sdk and all redirections needs to be triggered manually from the sdk
     let origin = request.headers.get('origin')
     if(origin) origin = new URL(origin);
     if (auth.status === 302 && origin && origin.href !== process.env.SERVER_URL) {
+      // custom provider signin
       return new Response(auth.headers.get('location'), {headers, status: 200});
     } else {
       return  auth

@@ -174,6 +174,7 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                 const url = new URL('/', baseUrl);
                 const uniqueWindowId = `authorizationJavascriptDatabase`;
                 const handleMessage = (e: MessageEvent)=> {
+                    console.log('Message: ', e.data)
                     const {token, user} = e.data;
                     clearTimeout(timeout);
                     loginWindow.close();
@@ -197,7 +198,8 @@ export async function initApp(config: { serverUrl?: string, apiKey?: string, con
                 const url = new URL('/auth/signin', baseUrl);
                 const uniqueWindowId = `authorizationJavascriptDatabase`;
                 const handleMessage = (e: MessageEvent)=> {
-                    const {token, user} = e.data;
+                    const {token, user} = JSON.parse(e.data);
+                    console.log('Message: ', e.data)
                     clearTimeout(timeout);
                     loginWindow.close();
                     window.removeEventListener('message', handleMessage)

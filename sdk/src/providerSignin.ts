@@ -26,9 +26,11 @@ export function getSignInPopup(baseUrl: string, provider: string) {
                 }),
               })
               const link = await resp.text();
-              window.location.href = link
+              window.location.assign(link)
            }
-           main();
+           setTimeout(() => {
+                        main();
+           }, 1)
        </script>
     </body>
   </html>
