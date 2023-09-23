@@ -3,63 +3,65 @@ import GitHub from '@auth/core/providers/github';
 import {readReadableStream} from '../utils.js';
 import {decode} from '@auth/core/jwt';
 import {sdkDb} from './sdk.js';
+import jsdbAdapter from './jsdbAdapter.js';
 
-const optionsEnvVar = {
-  // Configure one or more authentication providers
-  providers: [
-    GitHub({
-      clientId: '8a9219d06d63a95bf1af',
-      clientSecret: '746ce3dd62cfbd400289e7647063ecc907ffab17',
-    }),
-  ],
-  trustHost: true,
-  secret: process.env.JWT_SECRET,
-  cookies: {
-    csrfToken: {
-      name: 'next-auth.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'none',
-        path: '/',
-        secure: true
-      }
-    },
-    pkceCodeVerifier: {
-      name: 'next-auth.pkce.code_verifier',
-      options: {
-        httpOnly: true,
-        sameSite: 'none',
-        path: '/',
-        secure: true
-      }
-    }
-  },
-  callbacks: {
-    async signIn(args) {
-    // async signIn({user, account, profile, email, credentials}) {
-     // console.log(`signIn callback`)
-      return true
-    },
-    // async redirect({ url, baseUrl }) {
-    async redirect(args) {
-      //console.log(`redirect callback: ${JSON.stringify(args)}`)
-      return null
-      //return baseUrl
-    },
-    // async session({session, user, token}) {
-    async session(args) {
-      //console.log(`session callback: ${JSON.stringify(args)}`)
-      return args.session
-    },
-    // async jwt({token, user, account, profile, isNewUser}) {
-    async jwt(args) {
-     console.log(`jwt callback: ${JSON.stringify(args)}`)
-      return args.token;
-    }
-  },
-}
 // Request https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API needed by Auth.js
 export async function AuthModule(request) {
+  const optionsEnvVar = {
+    // Configure one or more authentication providers
+    providers: [
+      GitHub({
+        clientId: '8a9219d06d63a95bf1af',
+        clientSecret: '746ce3dd62cfbd400289e7647063ecc907ffab17',
+      }),
+    ],
+    trustHost: true,
+    secret: process.env.JWT_SECRET,
+    cookies: {
+      csrfToken: {
+        name: 'next-auth.csrf-token',
+        options: {
+          httpOnly: true,
+          sameSite: 'none',
+          path: '/',
+          secure: true
+        }
+      },
+      pkceCodeVerifier: {
+        name: 'next-auth.pkce.code_verifier',
+        options: {
+          httpOnly: true,
+          sameSite: 'none',
+          path: '/',
+          secure: true
+        }
+      }
+    },
+    callbacks: {
+      async signIn(args) {
+        // async signIn({user, account, profile, email, credentials}) {
+        // console.log(`signIn callback`)
+        return true
+      },
+      // async redirect({ url, baseUrl }) {
+      async redirect(args) {
+        //console.log(`redirect callback: ${JSON.stringify(args)}`)
+        return null
+        //return baseUrl
+      },
+      // async session({session, user, token}) {
+      async session(args) {
+        //console.log(`session callback: ${JSON.stringify(args)}`)
+        return args.session
+      },
+      // async jwt({token, user, account, profile, isNewUser}) {
+      async jwt(args) {
+        console.log(`jwt callback: ${JSON.stringify(args)}`)
+        return args.token;
+      }
+    },
+    adapter: jsdbAdapter(sdkDb)
+  }
   let headers = new Headers();
   const url = new URL(request.url)
   if (['auth', 'db', 'functions'].includes(url.pathname.split('/')[1])) {

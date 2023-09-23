@@ -5,6 +5,8 @@ import {parseData, readReadableStream, readStreamToPromise} from '../../utils.js
 import jwt from 'jsonwebtoken';
 import {getEventStore} from '../../ws/ws.js';
 import {AuthModule} from '../../http/auth.js';
+import {initSdk} from '../../http/sdk.js';
+
 
 const wsServer = new WebSocketServer({noServer: true});
 
@@ -79,8 +81,10 @@ const server = http.createServer(async (req, res) => {
   res.end();
 });
 
-server.listen(port, hostname, () => {
+server.listen(port, hostname, async () => {
+  await initSdk()
   console.log(`Server running at http://${hostname}:${port}/`);
+
 });
 
 server.on('upgrade', (request, socket, head) => {
