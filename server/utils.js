@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 export function readStreamToPromise(stream) {
     return new Promise((resolve, reject) => {
         const chunks = [];
@@ -17,4 +19,11 @@ export function parseData(dataString) {
             return value;
         }
     });
+}
+export async function readReadableStream(readableStream) {
+    const chunks = [];
+    for await (const chunk of readableStream) {
+        chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks).toString("utf-8");
 }

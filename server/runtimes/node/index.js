@@ -1,16 +1,69 @@
 import * as http from 'http';
 import {WebSocketServer} from 'ws';
 import {route} from '../../http/base.js';
-import {parseData, readStreamToPromise} from '../../utils.js';
+import {parseData, readReadableStream, readStreamToPromise} from '../../utils.js';
 import jwt from 'jsonwebtoken';
 import {getEventStore} from '../../ws/ws.js';
+import {AuthModule} from '../../http/auth.js';
+import {initSdk} from '../../http/sdk.js';
+
 
 const wsServer = new WebSocketServer({noServer: true});
 
-const hostname = '0.0.0.0';
+const hostname = 'localhost'
 const port = process.env.PORT || 3001;
 
+async function getBody(request) {
+  return new Promise((resolve) => {
+    const bodyParts = [];
+    let body;
+    request.on('data', (chunk) => {
+      bodyParts.push(chunk);
+    }).on('end', () => {
+      body = Buffer.concat(bodyParts).toString();
+      resolve(body)
+    });
+  });
+}
+async function convertIncomingMessageToRequest(req){
+  const headers = new Headers();
+  for (var key in req.headers) {
+    if (req.headers[key]) headers.append(key, req.headers[key]);
+  }
+  const body = req.method === 'POST' ? await getBody(req) : null;
+  // TODO remove hardcoded http
+  const baseUrl = process.env.SERVER_URL
+  console.log((new URL(req.url, baseUrl)).pathname)
+  const reqObj = {
+  ...req,
+    body,
+    headers,
+  }
+  let request = new Request(new URL(req.url, baseUrl), reqObj)
+  return request
+}
+async function convertResponseToServerResponse(response, serverResponse) {
+  const headers = {};
+  for (const headerName of response.headers.keys()) {
+    const header = response.headers.get(headerName);
+    headers[headerName] = header
+  }
+  serverResponse.writeHead(response.status, headers)
+  if(response.body) {
+    const body = await readReadableStream(response.body)
+    serverResponse.write(body)
+  }
+}
+
 const server = http.createServer(async (req, res) => {
+  const request = await convertIncomingMessageToRequest(req)
+  const authResp = await AuthModule(request);
+  if(authResp)  {
+    await convertResponseToServerResponse(authResp, res);
+    // Todo, remove this return and see if the user is auth or not
+    return res.end()
+  }
+
   if (req.method === 'POST') {
     const bodyString = await readStreamToPromise(req);
     const body = parseData(bodyString);
@@ -25,10 +78,13 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify(result ?? null));
     }
   }
+  res.end();
 });
 
-server.listen(port, hostname, () => {
+server.listen(port, hostname, async () => {
+  await initSdk()
   console.log(`Server running at http://${hostname}:${port}/`);
+
 });
 
 server.on('upgrade', (request, socket, head) => {
